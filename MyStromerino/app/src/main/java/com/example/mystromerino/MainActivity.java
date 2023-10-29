@@ -1,5 +1,6 @@
 package com.example.mystromerino;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -11,6 +12,10 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.Iterator;
@@ -20,8 +25,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String URL1 = "http://192.168.2.24:8000/data";
     private static final String BASE_URL = "http://192.168.2.24:8000/power=";
 
-
     private TextView responseTextView;
+    private LineChart lineChart;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
         Button button1 = findViewById(R.id.button1);
         Button button2 = findViewById(R.id.button2);
         responseTextView = findViewById(R.id.responseTextView);
+        lineChart = findViewById(R.id.lineChart);
 
         button1.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -39,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
                 makeGetRequest(URL1);
             }
         });
+
         button2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -65,8 +72,8 @@ public class MainActivity extends AppCompatActivity {
                 makeGetRequest(finalUrl);
             }
         });
-
     }
+
     private void makeGetRequest(String url) {
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
@@ -75,38 +82,60 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             // Parse the JSON response
                             JSONObject jsonObject = new JSONObject(response);
-                            // Get keys from the JSON object
-                            Iterator<String> keys = jsonObject.keys();
-                            // Display keys and their corresponding values line by line
-                            StringBuilder formattedResponse = new StringBuilder();
-                            while (keys.hasNext()) {
-                                String key = keys.next();
-                                String value = jsonObject.getString(key);
-                                formattedResponse.append(key).append(": ").append(value).append("\n");
-                            }
+                            // Get the "power" value from the JSON object
+                            int powerValue = jsonObject.getInt("power");
+                            // Get the "currentThreshold" value from the JSON object
+                            int currentThreshold = jsonObject.getInt("currentThreshold");
+                            // Update the line chart with the received power value
+                            updateLineChart(powerValue);
                             // Display the formatted JSON response in the TextView
-                            responseTextView.setText(formattedResponse.toString());
+                            responseTextView.setText("Power: " + powerValue + "\n" + "currentThreshold: " + currentThreshold);
                         } catch (JSONException e) {
                             e.printStackTrace();
                             // Handle JSON parsing error
-                            responseTextView.setText("Error parsing JSON response");
+                            // responseTextView.setText("Error parsing JSON response");
                         }
                     }
                 },
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        // Display a detailed error message
-                        String errorMessage;
-                        if (error.networkResponse != null && error.networkResponse.data != null) {
-                            errorMessage = new String(error.networkResponse.data);
-                        } else {
-                            errorMessage = "Error occurred, please try again later.";
-                        }
-                        responseTextView.setText(errorMessage);
+                        // Handle errors
+                        responseTextView.setText("Error occurred, please try again later.");
                     }
                 });
         // Add the request to the RequestQueue
         Volley.newRequestQueue(this).add(stringRequest);
+    }
+
+    private void updateLineChart(int powerValue) {
+        // Get the LineData object from the LineChart
+        LineData data = lineChart.getData();
+
+        // If LineData object is null, create a new one
+        if (data == null) {
+            data = new LineData();
+            lineChart.setData(data);
+        }
+
+        // Get the DataSet from LineData, if null, create a new one
+        LineDataSet set = (LineDataSet) data.getDataSetByIndex(0);
+        if (set == null) {
+            set = new LineDataSet(null, "Power Data");
+            set.setColor(Color.BLUE);
+            set.setCircleColor(Color.BLUE);
+            set.setLineWidth(2f);
+            set.setCircleRadius(4f);
+            data.addDataSet(set);
+        }
+
+        // Add a new entry to the DataSet using powerValue as the y-axis value
+        data.addEntry(new Entry(set.getEntryCount(), powerValue), 0);
+
+        // Notify the chart that the data has changed
+        lineChart.notifyDataSetChanged();
+
+        // Refresh the chart
+        lineChart.invalidate();
     }
 }
