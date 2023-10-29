@@ -2,9 +2,12 @@ package com.example.mystromerino;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.Switch;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import com.android.volley.Request;
@@ -27,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView responseTextView;
     private LineChart lineChart;
+    private Handler handler;
+    private boolean autoDataEnabled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +42,22 @@ public class MainActivity extends AppCompatActivity {
         Button button2 = findViewById(R.id.button2);
         responseTextView = findViewById(R.id.responseTextView);
         lineChart = findViewById(R.id.lineChart);
+        Switch switchAutoData = findViewById(R.id.switchAutoData);
+        handler = new Handler();
+
+        switchAutoData.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                autoDataEnabled = isChecked;
+                if (isChecked) {
+                    // If the switch is checked, start automatic data fetching
+                    startAutoDataFetching();
+                } else {
+                    // If the switch is unchecked, stop automatic data fetching
+                    stopAutoDataFetching();
+                }
+            }
+        });
 
         button1.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -93,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
                         } catch (JSONException e) {
                             e.printStackTrace();
                             // Handle JSON parsing error
-                            // responseTextView.setText("Error parsing JSON response");
+                            responseTextView.setText("Error parsing JSON response");
                         }
                     }
                 },
@@ -137,5 +158,24 @@ public class MainActivity extends AppCompatActivity {
 
         // Refresh the chart
         lineChart.invalidate();
+    }
+
+    private void startAutoDataFetching() {
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // Perform HTTP GET request 1
+                makeGetRequest(URL1);
+                // Repeat this runnable every 30 seconds if autoDataEnabled is true
+                if (autoDataEnabled) {
+                    handler.postDelayed(this, 30000); // 30 seconds delay
+                }
+            }
+        }, 30000); // 30 seconds initial delay
+    }
+
+    private void stopAutoDataFetching() {
+        // Remove any existing callbacks to stop the automatic data fetching
+        handler.removeCallbacksAndMessages(null);
     }
 }
